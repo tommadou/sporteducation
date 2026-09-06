@@ -69,3 +69,13 @@ Deze versie is reeds gekoppeld aan het Supabase-project `the-season`.
 
 ## V6
 Wanneer je bij een bestaande les een criterium uitschakelt, controleert Admin of daarvoor al scores bestaan. Je krijgt dan de keuze om die scores te verwijderen of te bewaren. Er is geen extra SQL-migratie nodig bovenop V5.
+
+## V7
+- Scorepagina: eerst docent, daarna klas, daarna alleen de toegewezen lesmomenten van die klas.
+- Leaderboard: totaalpunten staan nu direct na teamnaam, zodat ze op een smartphone meteen zichtbaar zijn.
+- Subtiele goud/zilver/brons-markering naast plaatsen 1, 2 en 3.
+- Service-worker cache bijgewerkt naar `season-v7`.
+
+## V8
+- Zichtbare titel overal gewijzigd naar `SEASON 26-27`.
+- Hoofdtitel blijft op smartphone op één regel en schaalt mee met de schermbreedte.
