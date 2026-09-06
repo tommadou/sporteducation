@@ -1,0 +1,70 @@
+<!doctype html><html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#ffffff"><link rel="manifest" href="manifest.webmanifest"><title>The Season — Admin</title><style>
+:root{--ink:#111;--muted:#777;--line:#dedede;--soft:#f5f5f2}
+*{box-sizing:border-box}html{background:#fff}body{margin:0;background:#fff;color:var(--ink);font-family:Arial,Helvetica,sans-serif;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit}.app{max-width:820px;margin:auto;padding:28px 16px 70px}.hero{padding:8px 0 26px}.eyebrow{font-size:9px;letter-spacing:.31em;text-transform:uppercase;color:#888;margin-bottom:14px}
+h1{margin:0;font-size:clamp(38px,12vw,68px);font-weight:400;line-height:.9;letter-spacing:.11em;text-transform:uppercase}.rule{border-top:1px solid #111;margin-top:28px}
+.section-head{display:flex;justify-content:space-between;align-items:end;gap:12px;margin:28px 0 18px}h2{margin:0;font-size:14px;font-weight:400;letter-spacing:.2em;text-transform:uppercase}.meta{font-size:8px;color:#999;letter-spacing:.14em;text-transform:uppercase}
+.tabs{display:flex;overflow:auto;border-bottom:1px solid var(--line);margin-bottom:20px}.tab{border:0;background:#fff;padding:11px 0 10px;margin-right:22px;color:#999;font-size:9px;letter-spacing:.15em;text-transform:uppercase;white-space:nowrap}.tab.active{color:#111;border-bottom:2px solid #111}
+.table-wrap{overflow-x:auto}.standings{width:100%;border-collapse:collapse;min-width:520px}.standings th{font-size:8px;font-weight:400;letter-spacing:.12em;text-transform:uppercase;color:#999;padding:9px 8px;border-bottom:1px solid #111;text-align:right}.standings th:nth-child(1),.standings th:nth-child(2){text-align:left}.standings td{padding:17px 8px;border-bottom:1px solid #e7e7e7;text-align:right;font-size:13px}.standings td.pos{font-size:21px;text-align:left;width:42px}.standings td.team{text-align:left;font-size:15px;letter-spacing:.06em;text-transform:uppercase}.standings td.total{font-size:20px;font-weight:500}.class-note{display:block;font-size:8px;color:#999;letter-spacing:.12em;margin-top:4px}
+.field{margin:0 0 18px}.field label{display:block;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:#666;margin-bottom:8px}select,input{width:100%;min-height:48px;border:1px solid #ccc;border-radius:0;background:#fff;padding:12px;font-size:16px;color:#111}
+.team-score{border-top:1px solid #111;padding:20px 0 24px}.team-score-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px}.team-score h3{margin:0;font-size:21px;font-weight:400;letter-spacing:.08em;text-transform:uppercase}.teaching{font-size:8px;letter-spacing:.14em;border:1px solid #111;padding:6px 7px;text-transform:uppercase}
+.criterion{margin:17px 0}.criterion-label{font-size:10px;letter-spacing:.18em;text-transform:uppercase;margin-bottom:9px}.score-buttons{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.score-btn{min-height:52px;border:1px solid #bbb;background:#fff;font-size:19px}.score-btn.selected{background:#111;color:#fff;border-color:#111}
+.primary,.secondary{width:100%;min-height:50px;border:1px solid #111;padding:13px;text-transform:uppercase;letter-spacing:.15em;font-size:9px;margin-top:9px}.primary{background:#111;color:#fff}.secondary{background:#fff;color:#111}.primary:disabled{opacity:.35}
+.notice{font-size:11px;line-height:1.55;background:var(--soft);padding:14px;margin:12px 0}.admin-row{border-top:1px solid #e4e4e4;padding:14px 0;display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center}.admin-row strong{font-weight:400;letter-spacing:.04em}.admin-row small{display:block;color:#999;margin-top:4px}.actions{display:flex;gap:6px}.tiny{border:1px solid #bbb;background:#fff;padding:8px;font-size:8px;letter-spacing:.1em;text-transform:uppercase}
+.editor{border-top:1px solid #111;padding:18px 0;margin-top:10px}.editor-title{font-size:11px;letter-spacing:.16em;text-transform:uppercase;margin-bottom:16px}.hidden{display:none!important}
+.toast{position:fixed;left:16px;right:16px;bottom:18px;background:#111;color:#fff;padding:13px;z-index:50;font-size:11px;opacity:0;pointer-events:none;transition:.2s}.toast.show{opacity:1}
+@media(max-width:560px){.app{padding-top:24px}.standings{min-width:500px}.table-wrap{margin-right:-16px;padding-right:16px}.score-buttons{gap:6px}.score-btn{min-height:50px}}
+@media(min-width:650px){.app{padding-left:22px;padding-right:22px}.score-buttons{max-width:420px}.toast{left:50%;right:auto;width:520px;transform:translateX(-50%)}}
+</style></head><body><main class="app">
+<header class="hero"><div class="eyebrow">VIVES · SPORT EDUCATION</div><h1>ADMIN<br>THE SEASON</h1><div class="rule"></div></header>
+<div class="section-head"><h2>Beheer</h2><span class="meta">Admin</span></div>
+<div class="tabs" id="tabs"><button class="tab active" data-p="teams">Teams</button><button class="tab" data-p="lessons">Lessen</button><button class="tab" data-p="teachers">Leraars</button><button class="tab" data-p="criteria">Criteria</button><button class="tab" data-p="scores">Scores</button></div>
+<div id="content"></div></main><div class="toast" id="toast"></div><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>
+const SUPABASE_URL="https://lgwlvtsvsmxkyenesepj.supabase.co";
+const SUPABASE_KEY="sb_publishable_2HHpT0z4esNRr4PmLX2W1g_6nH4LjgN";
+const configured=!SUPABASE_URL.startsWith("YOUR_");
+const db=configured?window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY):null;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function toast(m){const t=$("toast");if(!t)return;t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2200)}
+</script><script>
+let S={teams:[],lessons:[],teachers:[],criteria:[],scores:[],panel:"teams",edit:null};
+async function load(){
+ if(!configured)return toast("Koppel eerst Supabase");
+ const [a,b,c,d,e]=await Promise.all([db.from("teams").select("*").order("class_name,sort_order"),db.from("lessons").select("*").order("lesson_date"),db.from("teachers").select("*").order("name"),db.from("criteria").select("*").order("sort_order"),db.from("scores").select("*,teams(name,class_name),criteria(name),lessons(lesson_date,title),teachers(name)").order("created_at",{ascending:false}).limit(250)]);
+ Object.assign(S,{teams:a.data||[],lessons:b.data||[],teachers:c.data||[],criteria:d.data||[],scores:e.data||[]});render();
+}
+$("tabs").querySelectorAll(".tab").forEach(b=>b.onclick=()=>{S.panel=b.dataset.p;S.edit=null;$("tabs").querySelectorAll(".tab").forEach(x=>x.classList.toggle("active",x===b));render()});
+const row=(title,sub,table,id)=>`<div class="admin-row"><div><strong>${esc(title)}</strong><small>${esc(sub)}</small></div><div class="actions"><button class="tiny edit" data-table="${table}" data-id="${id}">Bewerk</button><button class="tiny del" data-table="${table}" data-id="${id}">Verwijder</button></div></div>`;
+function render(){
+ const c=$("content"),p=S.panel;
+ if(p==="teams") c.innerHTML=formTeam()+S.teams.map(x=>row(x.name,x.class_name,"teams",x.id)).join("");
+ if(p==="teachers") c.innerHTML=formTeacher()+S.teachers.map(x=>row(x.name,x.active?"actief":"inactief","teachers",x.id)).join("");
+ if(p==="criteria") c.innerHTML=formCriterion()+S.criteria.map(x=>row(x.name,`${x.min_points}–${x.max_points} · ${x.applies_to==="all"?"alle teams":"lesgevend team"}`,"criteria",x.id)).join("");
+ if(p==="lessons") c.innerHTML=formLesson()+S.lessons.map(x=>{const t=S.teams.find(t=>String(t.id)===String(x.teaching_team_id));return row(x.title||"Les",`${x.class_name} · ${x.lesson_date} · ${t?.name||"geen lesgevend team"}`,"lessons",x.id)}).join("");
+ if(p==="scores") c.innerHTML=formScore()+S.scores.map(x=>row(`${x.teams?.name||"Team"} · ${x.criteria?.name||""} · ${x.points} pt`,`${x.teams?.class_name||""} · ${x.lessons?.lesson_date||""}`,"scores",x.id)).join("");
+ bind();
+}
+function editing(table){return S.edit?.table===table?S.edit.obj:null}
+function formTeam(){const x=editing("teams");return `<form id="form" class="editor"><div class="editor-title">${x?"Team bewerken":"Team toevoegen"}</div><div class="field"><label>Klas</label><input name="class_name" value="${esc(x?.class_name||"")}" placeholder="3LOA" required></div><div class="field"><label>Teamnaam</label><input name="name" value="${esc(x?.name||"")}" required></div><button class="primary">${x?"Wijzigingen opslaan":"Team toevoegen"}</button>${x?'<button type="button" class="secondary cancel">Annuleren</button>':""}</form>`}
+function formTeacher(){const x=editing("teachers");return `<form id="form" class="editor"><div class="editor-title">${x?"Leraar bewerken":"Leraar toevoegen"}</div><div class="field"><label>Naam</label><input name="name" value="${esc(x?.name||"")}" required></div><div class="field"><label>Status</label><select name="active"><option value="true" ${x?.active!==false?"selected":""}>Actief</option><option value="false" ${x?.active===false?"selected":""}>Inactief</option></select></div><button class="primary">${x?"Wijzigingen opslaan":"Leraar toevoegen"}</button>${x?'<button type="button" class="secondary cancel">Annuleren</button>':""}</form>`}
+function formCriterion(){const x=editing("criteria");return `<form id="form" class="editor"><div class="editor-title">${x?"Criterium bewerken":"Criterium toevoegen"}</div><div class="field"><label>Naam</label><input name="name" value="${esc(x?.name||"")}" required></div><div class="field"><label>Korte naam leaderboard</label><input name="short_name" value="${esc(x?.short_name||"")}" placeholder="bv. Inzet"></div><div class="field"><label>Geldt voor</label><select name="applies_to"><option value="all" ${x?.applies_to!=="teaching"?"selected":""}>Alle teams</option><option value="teaching" ${x?.applies_to==="teaching"?"selected":""}>Alleen lesgevend team</option></select></div><div class="field"><label>Minimum</label><input type="number" name="min_points" value="${x?.min_points??0}" required></div><div class="field"><label>Maximum</label><input type="number" name="max_points" value="${x?.max_points??3}" required></div><button class="primary">${x?"Wijzigingen opslaan":"Criterium toevoegen"}</button>${x?'<button type="button" class="secondary cancel">Annuleren</button>':""}</form>`}
+function teamOptions(sel){return '<option value="">Kies…</option>'+S.teams.map(t=>`<option value="${t.id}" ${String(t.id)===String(sel)?"selected":""}>${esc(t.class_name)} · ${esc(t.name)}</option>`).join("")}
+function formLesson(){const x=editing("lessons");return `<form id="form" class="editor"><div class="editor-title">${x?"Les bewerken":"Les toevoegen"}</div><div class="field"><label>Datum</label><input type="date" name="lesson_date" value="${esc(x?.lesson_date||"")}" required></div><div class="field"><label>Klas</label><input name="class_name" value="${esc(x?.class_name||"")}" placeholder="3LOA" required></div><div class="field"><label>Lesnaam</label><input name="title" value="${esc(x?.title||"")}"></div><div class="field"><label>Lesgevend team</label><select name="teaching_team_id">${teamOptions(x?.teaching_team_id)}</select></div><button class="primary">${x?"Wijzigingen opslaan":"Les toevoegen"}</button>${x?'<button type="button" class="secondary cancel">Annuleren</button>':""}</form>`}
+function formScore(){const x=editing("scores");if(!x)return '<div class="notice">Klik op <b>Bewerk</b> bij een score om een fout rechtstreeks te corrigeren. De docent wordt niet getoond op het publieke klassement.</div>';return `<form id="form" class="editor"><div class="editor-title">Score bewerken</div><div class="notice">${esc(x.teams?.class_name||"")} · ${esc(x.teams?.name||"")} · ${esc(x.criteria?.name||"")} · ${esc(x.lessons?.lesson_date||"")}</div><div class="field"><label>Punten</label><input type="number" name="points" value="${x.points}" required></div><button class="primary">Wijzigingen opslaan</button><button type="button" class="secondary cancel">Annuleren</button></form>`}
+function bind(){
+ document.querySelectorAll(".edit").forEach(b=>b.onclick=()=>{const arr=S[b.dataset.table];const obj=arr.find(x=>String(x.id)===b.dataset.id);S.edit={table:b.dataset.table,obj};render();window.scrollTo({top:250,behavior:"smooth"})});
+ document.querySelectorAll(".cancel").forEach(b=>b.onclick=()=>{S.edit=null;render()});
+ document.querySelectorAll(".del").forEach(b=>b.onclick=async()=>{if(!confirm("Zeker verwijderen?"))return;const {error}=await db.from(b.dataset.table).delete().eq("id",b.dataset.id);if(error)toast(error.message);else{toast("Verwijderd");S.edit=null;await load()}});
+ const f=$("form");if(!f)return;f.onsubmit=submit;
+}
+async function submit(e){e.preventDefault();const f=new FormData(e.currentTarget),table=S.panel==="scores"?"scores":S.panel;let obj={};
+ if(table==="teams")obj={class_name:f.get("class_name").trim(),name:f.get("name").trim()};
+ if(table==="teachers")obj={name:f.get("name").trim(),active:f.get("active")==="true"};
+ if(table==="criteria")obj={name:f.get("name").trim(),short_name:f.get("short_name").trim(),applies_to:f.get("applies_to"),min_points:Number(f.get("min_points")),max_points:Number(f.get("max_points"))};
+ if(table==="lessons")obj={lesson_date:f.get("lesson_date"),class_name:f.get("class_name").trim(),title:f.get("title").trim(),teaching_team_id:f.get("teaching_team_id")?Number(f.get("teaching_team_id")):null};
+ if(table==="scores")obj={points:Number(f.get("points"))};
+ let q=S.edit?db.from(table).update(obj).eq("id",S.edit.obj.id):db.from(table).insert(obj);const {error}=await q;if(error)return toast(error.message);toast(S.edit?"Wijzigingen opgeslagen":"Toegevoegd");S.edit=null;await load();
+}
+load();
+</script></body></html>
