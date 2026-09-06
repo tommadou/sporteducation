@@ -49,3 +49,23 @@ Dit ontwerp gebruikt bewust geheime links in plaats van authenticatie. Daardoor 
 
 ## Supabase
 Deze versie is reeds gekoppeld aan het Supabase-project `the-season`.
+
+## V4
+- Excelimport onder Admin > Lessen.
+- Kolommen: Datum, Klas, Lesnaam, Lesgevend team, Beoordelaar.
+- Een beoordelaar kan aan een les worden toegewezen.
+- Op de scorepagina ziet een docent alleen lessen die aan hem/haar zijn toegewezen.
+- Voer bij upgrade van V3 eerst `supabase-v4-migration.sql` uit in Supabase.
+- Voorbeeldbestand: `the-season-lessen-import.xlsx`.
+
+
+## V5
+- Meerdere beoordelaars per les via `lesson_evaluators`.
+- Per les bepaal je welke criteria beoordeeld worden via `lesson_criteria`.
+- `Doelen bereikt?` blijft alleen op het lesgevende team van toepassing wanneer dat criterium voor die les actief is.
+- Excelkolom `Beoordelaars`: meerdere namen met `;`, bv. `Tom; Jan`.
+- Excelkolom `Criteria`: meerdere criteria met `;`, bv. `Klaar?; Inzet`. Leeg betekent bij import: alle actieve criteria.
+- Voer voor een bestaande database eerst `supabase-v5-migration.sql` uit.
+
+## V6
+Wanneer je bij een bestaande les een criterium uitschakelt, controleert Admin of daarvoor al scores bestaan. Je krijgt dan de keuze om die scores te verwijderen of te bewaren. Er is geen extra SQL-migratie nodig bovenop V5.

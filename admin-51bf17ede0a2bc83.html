@@ -19,7 +19,7 @@ h1{margin:0;font-size:clamp(38px,12vw,68px);font-weight:400;line-height:.9;lette
 <header class="hero"><div class="eyebrow">VIVES · SPORT EDUCATION</div><h1>ADMIN<br>THE SEASON</h1><div class="rule"></div></header>
 <div class="section-head"><h2>Beheer</h2><span class="meta">Admin</span></div>
 <div class="tabs" id="tabs"><button class="tab active" data-p="teams">Teams</button><button class="tab" data-p="lessons">Lessen</button><button class="tab" data-p="teachers">Leraars</button><button class="tab" data-p="criteria">Criteria</button><button class="tab" data-p="scores">Scores</button></div>
-<div id="content"></div></main><div class="toast" id="toast"></div><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>
+<div id="content"></div></main><div class="toast" id="toast"></div><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script><script>
 const SUPABASE_URL="https://lgwlvtsvsmxkyenesepj.supabase.co";
 const SUPABASE_KEY="sb_publishable_2HHpT0z4esNRr4PmLX2W1g_6nH4LjgN";
 const configured=!SUPABASE_URL.startsWith("YOUR_");
@@ -28,11 +28,11 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function toast(m){const t=$("toast");if(!t)return;t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2200)}
 </script><script>
-let S={teams:[],lessons:[],teachers:[],criteria:[],scores:[],panel:"teams",edit:null};
+let S={teams:[],lessons:[],teachers:[],criteria:[],scores:[],lessonEvaluators:[],lessonCriteria:[],panel:"teams",edit:null};
 async function load(){
  if(!configured)return toast("Koppel eerst Supabase");
- const [a,b,c,d,e]=await Promise.all([db.from("teams").select("*").order("class_name,sort_order"),db.from("lessons").select("*").order("lesson_date"),db.from("teachers").select("*").order("name"),db.from("criteria").select("*").order("sort_order"),db.from("scores").select("*,teams(name,class_name),criteria(name),lessons(lesson_date,title),teachers(name)").order("created_at",{ascending:false}).limit(250)]);
- Object.assign(S,{teams:a.data||[],lessons:b.data||[],teachers:c.data||[],criteria:d.data||[],scores:e.data||[]});render();
+ const [a,b,c,d,e,f,g]=await Promise.all([db.from("teams").select("*").order("class_name,sort_order"),db.from("lessons").select("*").order("lesson_date"),db.from("teachers").select("*").order("name"),db.from("criteria").select("*").order("sort_order"),db.from("scores").select("*,teams(name,class_name),criteria(name),lessons(lesson_date,title),teachers(name)").order("created_at",{ascending:false}).limit(250),db.from("lesson_evaluators").select("*"),db.from("lesson_criteria").select("*")]);
+ Object.assign(S,{teams:a.data||[],lessons:b.data||[],teachers:c.data||[],criteria:d.data||[],scores:e.data||[],lessonEvaluators:f.data||[],lessonCriteria:g.data||[]});render();
 }
 $("tabs").querySelectorAll(".tab").forEach(b=>b.onclick=()=>{S.panel=b.dataset.p;S.edit=null;$("tabs").querySelectorAll(".tab").forEach(x=>x.classList.toggle("active",x===b));render()});
 const row=(title,sub,table,id)=>`<div class="admin-row"><div><strong>${esc(title)}</strong><small>${esc(sub)}</small></div><div class="actions"><button class="tiny edit" data-table="${table}" data-id="${id}">Bewerk</button><button class="tiny del" data-table="${table}" data-id="${id}">Verwijder</button></div></div>`;
@@ -41,7 +41,7 @@ function render(){
  if(p==="teams") c.innerHTML=formTeam()+S.teams.map(x=>row(x.name,x.class_name,"teams",x.id)).join("");
  if(p==="teachers") c.innerHTML=formTeacher()+S.teachers.map(x=>row(x.name,x.active?"actief":"inactief","teachers",x.id)).join("");
  if(p==="criteria") c.innerHTML=formCriterion()+S.criteria.map(x=>row(x.name,`${x.min_points}–${x.max_points} · ${x.applies_to==="all"?"alle teams":"lesgevend team"}`,"criteria",x.id)).join("");
- if(p==="lessons") c.innerHTML=formLesson()+S.lessons.map(x=>{const t=S.teams.find(t=>String(t.id)===String(x.teaching_team_id));return row(x.title||"Les",`${x.class_name} · ${x.lesson_date} · ${t?.name||"geen lesgevend team"}`,"lessons",x.id)}).join("");
+ if(p==="lessons") c.innerHTML=formLesson()+S.lessons.map(x=>{const t=S.teams.find(t=>String(t.id)===String(x.teaching_team_id));const ev=S.teachers.filter(tt=>lessonEvaluatorIds(x.id).includes(String(tt.id))).map(tt=>tt.name).join(", ");const cr=S.criteria.filter(cc=>lessonCriterionIds(x.id).includes(String(cc.id))).map(cc=>cc.short_name||cc.name).join(", ");return row(x.title||"Les",`${x.class_name} · ${x.lesson_date} · ${t?.name||"geen lesgevend team"} · beoordelaars: ${ev||"geen"} · criteria: ${cr||"geen"}`,"lessons",x.id)}).join("");
  if(p==="scores") c.innerHTML=formScore()+S.scores.map(x=>row(`${x.teams?.name||"Team"} · ${x.criteria?.name||""} · ${x.points} pt`,`${x.teams?.class_name||""} · ${x.lessons?.lesson_date||""}`,"scores",x.id)).join("");
  bind();
 }
@@ -50,20 +50,99 @@ function formTeam(){const x=editing("teams");return `<form id="form" class="edit
 function formTeacher(){const x=editing("teachers");return `<form id="form" class="editor"><div class="editor-title">${x?"Leraar bewerken":"Leraar toevoegen"}</div><div class="field"><label>Naam</label><input name="name" value="${esc(x?.name||"")}" required></div><div class="field"><label>Status</label><select name="active"><option value="true" ${x?.active!==false?"selected":""}>Actief</option><option value="false" ${x?.active===false?"selected":""}>Inactief</option></select></div><button class="primary">${x?"Wijzigingen opslaan":"Leraar toevoegen"}</button>${x?'<button type="button" class="secondary cancel">Annuleren</button>':""}</form>`}
 function formCriterion(){const x=editing("criteria");return `<form id="form" class="editor"><div class="editor-title">${x?"Criterium bewerken":"Criterium toevoegen"}</div><div class="field"><label>Naam</label><input name="name" value="${esc(x?.name||"")}" required></div><div class="field"><label>Korte naam leaderboard</label><input name="short_name" value="${esc(x?.short_name||"")}" placeholder="bv. Inzet"></div><div class="field"><label>Geldt voor</label><select name="applies_to"><option value="all" ${x?.applies_to!=="teaching"?"selected":""}>Alle teams</option><option value="teaching" ${x?.applies_to==="teaching"?"selected":""}>Alleen lesgevend team</option></select></div><div class="field"><label>Minimum</label><input type="number" name="min_points" value="${x?.min_points??0}" required></div><div class="field"><label>Maximum</label><input type="number" name="max_points" value="${x?.max_points??3}" required></div><button class="primary">${x?"Wijzigingen opslaan":"Criterium toevoegen"}</button>${x?'<button type="button" class="secondary cancel">Annuleren</button>':""}</form>`}
 function teamOptions(sel){return '<option value="">Kies…</option>'+S.teams.map(t=>`<option value="${t.id}" ${String(t.id)===String(sel)?"selected":""}>${esc(t.class_name)} · ${esc(t.name)}</option>`).join("")}
-function formLesson(){const x=editing("lessons");return `<form id="form" class="editor"><div class="editor-title">${x?"Les bewerken":"Les toevoegen"}</div><div class="field"><label>Datum</label><input type="date" name="lesson_date" value="${esc(x?.lesson_date||"")}" required></div><div class="field"><label>Klas</label><input name="class_name" value="${esc(x?.class_name||"")}" placeholder="3LOA" required></div><div class="field"><label>Lesnaam</label><input name="title" value="${esc(x?.title||"")}"></div><div class="field"><label>Lesgevend team</label><select name="teaching_team_id">${teamOptions(x?.teaching_team_id)}</select></div><button class="primary">${x?"Wijzigingen opslaan":"Les toevoegen"}</button>${x?'<button type="button" class="secondary cancel">Annuleren</button>':""}</form>`}
+function teacherOptions(sel){return '<option value="">Niet toegewezen</option>'+S.teachers.filter(t=>t.active!==false).map(t=>`<option value="${t.id}" ${String(t.id)===String(sel)?"selected":""}>${esc(t.name)}</option>`).join("")}
+function lessonEvaluatorIds(lessonId){return S.lessonEvaluators.filter(x=>String(x.lesson_id)===String(lessonId)).map(x=>String(x.teacher_id))}
+function lessonCriterionIds(lessonId){return S.lessonCriteria.filter(x=>String(x.lesson_id)===String(lessonId)).map(x=>String(x.criterion_id))}
+function multiChecks(kind,items,selected){return `<div class="multi-checks">${items.map(x=>`<label style="display:flex;gap:9px;align-items:center;padding:8px 0;font-size:12px"><input style="width:auto;min-height:auto" type="checkbox" name="${kind}" value="${x.id}" ${selected.includes(String(x.id))?"checked":""}>${esc(x.name)}</label>`).join("")}</div>`}
+function formLesson(){const x=editing("lessons"),evIds=x?lessonEvaluatorIds(x.id):[],crIds=x?lessonCriterionIds(x.id):S.criteria.filter(c=>c.active!==false).map(c=>String(c.id));return `<div class="editor"><div class="editor-title">Lessen importeren uit Excel</div><div class="notice">Kolommen: Datum, Klas, Lesnaam, Lesgevend team, Beoordelaars, Criteria. Meerdere namen/criteria scheid je met een puntkomma.</div><input id="lessonImport" type="file" accept=".xlsx,.xls"><button type="button" id="importHelp" class="secondary">Excelbestand kiezen en importeren</button></div><form id="form" class="editor"><div class="editor-title">${x?"Les bewerken":"Les toevoegen"}</div><div class="field"><label>Datum</label><input type="date" name="lesson_date" value="${esc(x?.lesson_date||"")}" required></div><div class="field"><label>Klas</label><input name="class_name" value="${esc(x?.class_name||"")}" placeholder="3LOA" required></div><div class="field"><label>Lesnaam</label><input name="title" value="${esc(x?.title||"")}" required></div><div class="field"><label>Lesgevend team</label><select name="teaching_team_id">${teamOptions(x?.teaching_team_id)}</select></div><div class="field"><label>Beoordelaars</label>${multiChecks("evaluator_ids",S.teachers.filter(t=>t.active!==false),evIds)}</div><div class="field"><label>Criteria die deze les beoordeeld worden</label>${multiChecks("criterion_ids",S.criteria.filter(c=>c.active!==false),crIds)}</div><button class="primary">${x?"Wijzigingen opslaan":"Les toevoegen"}</button>${x?'<button type="button" class="secondary cancel">Annuleren</button>':""}</form>`}
 function formScore(){const x=editing("scores");if(!x)return '<div class="notice">Klik op <b>Bewerk</b> bij een score om een fout rechtstreeks te corrigeren. De docent wordt niet getoond op het publieke klassement.</div>';return `<form id="form" class="editor"><div class="editor-title">Score bewerken</div><div class="notice">${esc(x.teams?.class_name||"")} · ${esc(x.teams?.name||"")} · ${esc(x.criteria?.name||"")} · ${esc(x.lessons?.lesson_date||"")}</div><div class="field"><label>Punten</label><input type="number" name="points" value="${x.points}" required></div><button class="primary">Wijzigingen opslaan</button><button type="button" class="secondary cancel">Annuleren</button></form>`}
 function bind(){
  document.querySelectorAll(".edit").forEach(b=>b.onclick=()=>{const arr=S[b.dataset.table];const obj=arr.find(x=>String(x.id)===b.dataset.id);S.edit={table:b.dataset.table,obj};render();window.scrollTo({top:250,behavior:"smooth"})});
  document.querySelectorAll(".cancel").forEach(b=>b.onclick=()=>{S.edit=null;render()});
  document.querySelectorAll(".del").forEach(b=>b.onclick=async()=>{if(!confirm("Zeker verwijderen?"))return;const {error}=await db.from(b.dataset.table).delete().eq("id",b.dataset.id);if(error)toast(error.message);else{toast("Verwijderd");S.edit=null;await load()}});
+ const imp=$("lessonImport");if(imp)imp.onchange=()=>importLessons(imp.files?.[0]);
+ const ih=$("importHelp");if(ih)ih.onclick=()=>{if(!imp?.files?.[0])return toast("Kies eerst een Excelbestand");importLessons(imp.files[0])};
  const f=$("form");if(!f)return;f.onsubmit=submit;
+}
+function norm(s){return String(s??"").trim()}
+function normKey(s){return norm(s).toLowerCase().replace(/\s+/g," ")}
+function excelDate(v){
+ if(v instanceof Date && !isNaN(v)) return v.toISOString().slice(0,10);
+ if(typeof v==="number"){const d=XLSX.SSF.parse_date_code(v);if(d)return `${d.y}-${String(d.m).padStart(2,"0")}-${String(d.d).padStart(2,"0")}`}
+ const s=norm(v);let m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);if(m)return `${m[3]}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`;
+ m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);if(m)return `${m[1]}-${m[2].padStart(2,"0")}-${m[3].padStart(2,"0")}`;
+ return "";
+}
+async function importLessons(file){
+ if(!file)return;
+ try{
+   const buf=await file.arrayBuffer(),wb=XLSX.read(buf,{type:"array",cellDates:true});
+   const sh=wb.Sheets[wb.SheetNames[0]],raw=XLSX.utils.sheet_to_json(sh,{defval:""});
+   if(!raw.length)return toast("Geen lessen gevonden");
+   const rows=[],errors=[],seen=new Set(S.lessons.map(l=>`${l.lesson_date}|${normKey(l.class_name)}|${normKey(l.title)}`));
+   raw.forEach((r,i)=>{
+     const get=(...names)=>{for(const n of names){const k=Object.keys(r).find(k=>normKey(k)===normKey(n));if(k!==undefined)return r[k]}return ""};
+     const lesson_date=excelDate(get("Datum")),class_name=norm(get("Klas")),title=norm(get("Lesnaam","Les","Titel"));
+     const teamName=norm(get("Lesgevend team","Team"));
+     const evaluatorNames=norm(get("Beoordelaars","Beoordelaar","Docent","Leraar")).split(";").map(norm).filter(Boolean);
+     const criterionNames=norm(get("Criteria","Criterium")).split(";").map(norm).filter(Boolean);
+     if(!lesson_date||!class_name||!title){errors.push(`Rij ${i+2}: Datum, Klas en Lesnaam zijn verplicht`);return}
+     const team=teamName?S.teams.find(t=>normKey(t.class_name)===normKey(class_name)&&normKey(t.name)===normKey(teamName)):null;
+     if(teamName&&!team){errors.push(`Rij ${i+2}: team "${teamName}" niet gevonden in ${class_name}`);return}
+     const evaluatorIds=[];
+     for(const name of evaluatorNames){const teacher=S.teachers.find(t=>normKey(t.name)===normKey(name));if(!teacher){errors.push(`Rij ${i+2}: beoordelaar "${name}" niet gevonden`);return}evaluatorIds.push(teacher.id)}
+     const criterionIds=[];
+     const names=criterionNames.length?criterionNames:S.criteria.filter(c=>c.active!==false).map(c=>c.name);
+     for(const name of names){const crit=S.criteria.find(c=>normKey(c.name)===normKey(name)||normKey(c.short_name)===normKey(name));if(!crit){errors.push(`Rij ${i+2}: criterium "${name}" niet gevonden`);return}criterionIds.push(crit.id)}
+     const key=`${lesson_date}|${normKey(class_name)}|${normKey(title)}`;
+     if(seen.has(key))return;seen.add(key);
+     rows.push({lesson:{lesson_date,class_name,title,teaching_team_id:team?.id||null},evaluatorIds,criterionIds});
+   });
+   if(errors.length)return alert("Import gestopt. Corrigeer eerst:\n\n"+errors.slice(0,12).join("\n")+(errors.length>12?`\n... en nog ${errors.length-12}`:""));
+   if(!rows.length)return toast("Geen nieuwe lessen om te importeren");
+   if(!confirm(`${rows.length} nieuwe lessen gevonden. Importeren?`))return;
+   for(const r of rows){
+      const ins=await db.from("lessons").insert(r.lesson).select("id").single();
+      if(ins.error)throw ins.error;
+      if(r.evaluatorIds.length){const q=await db.from("lesson_evaluators").insert(r.evaluatorIds.map(teacher_id=>({lesson_id:ins.data.id,teacher_id})));if(q.error)throw q.error}
+      if(r.criterionIds.length){const q=await db.from("lesson_criteria").insert(r.criterionIds.map(criterion_id=>({lesson_id:ins.data.id,criterion_id})));if(q.error)throw q.error}
+   }
+   toast(`${rows.length} lessen geïmporteerd`);await load();
+ }catch(err){toast(err?.message||"Excel kon niet worden gelezen");console.error(err)}
 }
 async function submit(e){e.preventDefault();const f=new FormData(e.currentTarget),table=S.panel==="scores"?"scores":S.panel;let obj={};
  if(table==="teams")obj={class_name:f.get("class_name").trim(),name:f.get("name").trim()};
  if(table==="teachers")obj={name:f.get("name").trim(),active:f.get("active")==="true"};
  if(table==="criteria")obj={name:f.get("name").trim(),short_name:f.get("short_name").trim(),applies_to:f.get("applies_to"),min_points:Number(f.get("min_points")),max_points:Number(f.get("max_points"))};
- if(table==="lessons")obj={lesson_date:f.get("lesson_date"),class_name:f.get("class_name").trim(),title:f.get("title").trim(),teaching_team_id:f.get("teaching_team_id")?Number(f.get("teaching_team_id")):null};
  if(table==="scores")obj={points:Number(f.get("points"))};
+ if(table==="lessons"){
+   obj={lesson_date:f.get("lesson_date"),class_name:f.get("class_name").trim(),title:f.get("title").trim(),teaching_team_id:f.get("teaching_team_id")?Number(f.get("teaching_team_id")):null};
+   const evaluatorIds=f.getAll("evaluator_ids").map(Number),criterionIds=f.getAll("criterion_ids").map(Number);
+   let lessonId;
+   if(S.edit){const q=await db.from("lessons").update(obj).eq("id",S.edit.obj.id).select("id").single();if(q.error)return toast(q.error.message);lessonId=q.data.id}
+   else{const q=await db.from("lessons").insert(obj).select("id").single();if(q.error)return toast(q.error.message);lessonId=q.data.id}
+   let // Controleer bij het uitschakelen van criteria of er al scores bestaan.
+   if(S.edit){
+     const previousIds=lessonCriterionIds(lessonId).map(Number);
+     const removedIds=previousIds.filter(id=>!criterionIds.includes(id));
+     if(removedIds.length){
+       const existing=S.scores.filter(s=>String(s.lesson_id)===String(lessonId)&&removedIds.includes(Number(s.criterion_id)));
+       if(existing.length){
+         const removedNames=S.criteria.filter(c=>removedIds.includes(Number(c.id))).map(c=>c.name).join(", ");
+         const removeScores=confirm(`Je schakelt ${removedNames} uit voor deze les. Er bestaan al ${existing.length} score(s).\n\nOK = criterium uitschakelen én oude scores verwijderen.\nAnnuleren = criterium uitschakelen maar oude scores bewaren.`);
+         if(removeScores){
+           const del=await db.from("scores").delete().eq("lesson_id",lessonId).in("criterion_id",removedIds);
+           if(del.error)return toast(del.error.message);
+         }
+       }
+     }
+   }
+   q=await db.from("lesson_evaluators").delete().eq("lesson_id",lessonId);if(q.error)return toast(q.error.message);
+   q=await db.from("lesson_criteria").delete().eq("lesson_id",lessonId);if(q.error)return toast(q.error.message);
+   if(evaluatorIds.length){q=await db.from("lesson_evaluators").insert(evaluatorIds.map(teacher_id=>({lesson_id:lessonId,teacher_id})));if(q.error)return toast(q.error.message)}
+   if(criterionIds.length){q=await db.from("lesson_criteria").insert(criterionIds.map(criterion_id=>({lesson_id:lessonId,criterion_id})));if(q.error)return toast(q.error.message)}
+   toast(S.edit?"Wijzigingen opgeslagen":"Toegevoegd");S.edit=null;await load();return;
+ }
  let q=S.edit?db.from(table).update(obj).eq("id",S.edit.obj.id):db.from(table).insert(obj);const {error}=await q;if(error)return toast(error.message);toast(S.edit?"Wijzigingen opgeslagen":"Toegevoegd");S.edit=null;await load();
 }
 load();

@@ -62,3 +62,22 @@ insert into public.teams(class_name,name,sort_order) values
 ('3LOB','Groep 1',1),('3LOB','Groep 2',2),('3LOB','Groep 3',3),('3LOB','Groep 4',4),
 ('3LOC','Groep 1',1),('3LOC','Groep 2',2),('3LOC','Groep 3',3),('3LOC','Groep 4',4)
 on conflict(class_name,name) do nothing;
+
+
+-- V5 junction tables
+create table if not exists public.lesson_evaluators(
+  lesson_id bigint not null references public.lessons(id) on delete cascade,
+  teacher_id bigint not null references public.teachers(id) on delete cascade,
+  primary key (lesson_id, teacher_id)
+);
+create table if not exists public.lesson_criteria(
+  lesson_id bigint not null references public.lessons(id) on delete cascade,
+  criterion_id bigint not null references public.criteria(id) on delete cascade,
+  primary key (lesson_id, criterion_id)
+);
+alter table public.lesson_evaluators enable row level security;
+alter table public.lesson_criteria enable row level security;
+create policy "anon lesson evaluators crud" on public.lesson_evaluators for all to anon using(true) with check(true);
+create policy "anon lesson criteria crud" on public.lesson_criteria for all to anon using(true) with check(true);
+grant select, insert, update, delete on table public.lesson_evaluators to anon;
+grant select, insert, update, delete on table public.lesson_criteria to anon;

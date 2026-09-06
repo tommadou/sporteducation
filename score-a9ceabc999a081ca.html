@@ -29,22 +29,29 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function toast(m){const t=$("toast");if(!t)return;t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2200)}
 </script><script>
-let teams=[],lessons=[],criteria=[],teachers=[],draft={};
+let teams=[],lessons=[],criteria=[],teachers=[],lessonEvaluators=[],lessonCriteria=[],draft={};
 async function load(){
  if(!configured)return toast("Koppel eerst Supabase");
- const [a,b,c,d]=await Promise.all([db.from("teams").select("*").eq("active",true).order("sort_order"),db.from("lessons").select("*").order("lesson_date"),db.from("criteria").select("*").eq("active",true).order("sort_order"),db.from("teachers").select("*").eq("active",true).order("name")]);
- teams=a.data||[];lessons=b.data||[];criteria=c.data||[];teachers=d.data||[];
+ const [a,b,c,d,e,f]=await Promise.all([db.from("teams").select("*").eq("active",true).order("sort_order"),db.from("lessons").select("*").order("lesson_date"),db.from("criteria").select("*").eq("active",true).order("sort_order"),db.from("teachers").select("*").eq("active",true).order("name"),db.from("lesson_evaluators").select("*"),db.from("lesson_criteria").select("*")]);
+ teams=a.data||[];lessons=b.data||[];criteria=c.data||[];teachers=d.data||[];lessonEvaluators=e.data||[];lessonCriteria=f.data||[];
  $("teacher").innerHTML='<option value="">Kies docent…</option>'+teachers.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join("");
  const saved=localStorage.getItem("seasonTeacher");if(saved)$("teacher").value=saved;
- $("lesson").innerHTML='<option value="">Kies een les…</option>'+lessons.map(l=>`<option value="${l.id}">${esc(l.class_name)} · ${new Date(l.lesson_date+"T12:00:00").toLocaleDateString("nl-BE")} · ${esc(l.title||"Les")}</option>`).join("");
+ populateLessons();
 }
-$("teacher").onchange=()=>{localStorage.setItem("seasonTeacher",$("teacher").value);validate()};$("lesson").onchange=render;
+function populateLessons(){
+ const tid=$("teacher").value;
+ const allowed=new Set(lessonEvaluators.filter(x=>String(x.teacher_id)===String(tid)).map(x=>String(x.lesson_id)));const mine=lessons.filter(l=>tid&&allowed.has(String(l.id)));
+ $("lesson").innerHTML='<option value="">'+(tid?(mine.length?"Kies een les…":"Geen lessen toegewezen"):"Kies eerst docent…")+'</option>'+mine.map(l=>`<option value="${l.id}">${esc(l.class_name)} · ${new Date(l.lesson_date+"T12:00:00").toLocaleDateString("nl-BE")} · ${esc(l.title||"Les")}</option>`).join("");
+ $("teams").innerHTML="";draft={};$("save").disabled=true;
+}
+$("teacher").onchange=()=>{localStorage.setItem("seasonTeacher",$("teacher").value);populateLessons()};$("lesson").onchange=render;
 function render(){
  const l=lessons.find(x=>String(x.id)===$("lesson").value);draft={};$("save").disabled=true;if(!l){$("teams").innerHTML="";return}
- $("teams").innerHTML=teams.filter(t=>t.class_name===l.class_name).map(t=>{const teaching=String(t.id)===String(l.teaching_team_id);const cs=criteria.filter(c=>c.applies_to==="all"||(c.applies_to==="teaching"&&teaching));return `<article class="team-score"><div class="team-score-head"><h3>${esc(t.name)}</h3>${teaching?'<span class="teaching">Gaf les</span>':""}</div>${cs.map(c=>`<div class="criterion"><div class="criterion-label">${esc(c.name)}</div><div class="score-buttons" style="grid-template-columns:repeat(${c.max_points-c.min_points+1},1fr)">${Array.from({length:c.max_points-c.min_points+1},(_,i)=>c.max_points-i).map(p=>`<button type="button" class="score-btn" data-t="${t.id}" data-c="${c.id}" data-p="${p}">${p}</button>`).join("")}</div></div>`).join("")}</article>`}).join("");
+ const allowedCriteria=new Set(lessonCriteria.filter(x=>String(x.lesson_id)===String(l.id)).map(x=>String(x.criterion_id)));
+ $("teams").innerHTML=teams.filter(t=>t.class_name===l.class_name).map(t=>{const teaching=String(t.id)===String(l.teaching_team_id);const cs=criteria.filter(c=>allowedCriteria.has(String(c.id))&&(c.applies_to==="all"||(c.applies_to==="teaching"&&teaching)));return `<article class="team-score"><div class="team-score-head"><h3>${esc(t.name)}</h3>${teaching?'<span class="teaching">Gaf les</span>':""}</div>${cs.map(c=>`<div class="criterion"><div class="criterion-label">${esc(c.name)}</div><div class="score-buttons" style="grid-template-columns:repeat(${c.max_points-c.min_points+1},1fr)">${Array.from({length:c.max_points-c.min_points+1},(_,i)=>c.max_points-i).map(p=>`<button type="button" class="score-btn" data-t="${t.id}" data-c="${c.id}" data-p="${p}">${p}</button>`).join("")}</div></div>`).join("")}</article>`}).join("");
  document.querySelectorAll(".score-btn").forEach(b=>b.onclick=()=>{draft[b.dataset.t+"|"+b.dataset.c]=Number(b.dataset.p);b.parentElement.querySelectorAll(".score-btn").forEach(x=>x.classList.toggle("selected",x===b));validate()});
 }
-function validate(){const l=lessons.find(x=>String(x.id)===$("lesson").value);if(!l)return $("save").disabled=true;let n=0;teams.filter(t=>t.class_name===l.class_name).forEach(t=>{const teach=String(t.id)===String(l.teaching_team_id);n+=criteria.filter(c=>c.applies_to==="all"||(c.applies_to==="teaching"&&teach)).length});$("save").disabled=!$("teacher").value||Object.keys(draft).length!==n}
+function validate(){const l=lessons.find(x=>String(x.id)===$("lesson").value);if(!l)return $("save").disabled=true;const allowedCriteria=new Set(lessonCriteria.filter(x=>String(x.lesson_id)===String(l.id)).map(x=>String(x.criterion_id)));let n=0;teams.filter(t=>t.class_name===l.class_name).forEach(t=>{const teach=String(t.id)===String(l.teaching_team_id);n+=criteria.filter(c=>allowedCriteria.has(String(c.id))&&(c.applies_to==="all"||(c.applies_to==="teaching"&&teach))).length});$("save").disabled=!$("teacher").value||Object.keys(draft).length!==n}
 $("save").onclick=async()=>{const rows=Object.entries(draft).map(([k,points])=>{const [team_id,criterion_id]=k.split("|");return{lesson_id:Number($("lesson").value),team_id:Number(team_id),criterion_id:Number(criterion_id),teacher_id:Number($("teacher").value),points}});const {error}=await db.from("scores").upsert(rows,{onConflict:"lesson_id,team_id,criterion_id"});if(error)return toast(error.message);toast("Alle scores opgeslagen");draft={};render()};
 load();
 </script></body></html>
