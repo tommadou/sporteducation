@@ -26,9 +26,13 @@ h1{margin:0;font-size:clamp(30px,9.2vw,68px);font-weight:400;line-height:.95;let
 .score-buttons{gap:6px}.score-btn{min-height:50px}
 }
 @media(min-width:650px){.app{padding-left:22px;padding-right:22px}.score-buttons{max-width:420px}.toast{left:50%;right:auto;width:520px;transform:translateX(-50%)}}
+
+.tab-link{border:0;background:#fff;padding:11px 0 10px;margin-right:22px;color:#999;font-size:9px;letter-spacing:.15em;text-transform:uppercase;white-space:nowrap;text-decoration:none;display:inline-block}
+.tab-link:hover{color:#111}
+
 </style></head><body><main class="app">
 <header class="hero"><div class="eyebrow">VIVES · SPORT EDUCATION</div><h1>SEASON 26-27</h1><div class="rule"></div></header>
-<div class="tabs" id="pageTabs"><button class="tab active" data-page="scorePanel">Scores invoeren</button><button class="tab" data-page="deletePanel">Scores verwijderen</button><button class="tab" data-page="leaderboardPanel">Leaderboard</button></div>
+<div class="tabs" id="pageTabs"><button class="tab active" data-page="scorePanel">Scores invoeren</button><button class="tab" data-page="deletePanel">Scores verwijderen</button><button class="tab" data-page="leaderboardPanel">Leaderboard</button><a class="tab-link" href="reglement.html" target="_blank" rel="noopener">Wedstrijdreglement</a></div>
 <section id="scorePanel" class="page-panel active">
 <div class="section-head"><h2>Score invoeren</h2><span class="meta">Docenten</span></div>
 <div class="field"><label>Docent</label><select id="teacher"></select></div><div class="field"><label>Klas</label><select id="class"></select></div><div class="field"><label>Les</label><select id="lesson"></select></div>

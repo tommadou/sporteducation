@@ -26,9 +26,14 @@ h1{margin:0;font-size:clamp(30px,9.2vw,68px);font-weight:400;line-height:.95;let
 .score-buttons{gap:6px}.score-btn{min-height:50px}
 }
 @media(min-width:650px){.app{padding-left:22px;padding-right:22px}.score-buttons{max-width:420px}.toast{left:50%;right:auto;width:520px;transform:translateX(-50%)}}
+
+.reglement-link{display:inline-block;margin:0 0 20px;color:#111;text-decoration:none;font-size:9px;letter-spacing:.15em;text-transform:uppercase;border-bottom:1px solid #111;padding-bottom:4px}
+.reglement-link:hover{opacity:.6}
+
 </style></head><body><main class="app">
 <header class="hero"><div class="eyebrow">VIVES · SPORT EDUCATION</div><h1>SEASON 26-27</h1><div class="rule"></div></header>
 <div class="section-head"><h2>Klassement</h2><span class="meta" id="updated">Live</span></div>
+<a class="reglement-link" href="reglement.html" target="_blank" rel="noopener">Wedstrijdreglement</a>
 <div class="tabs" id="filters"></div><div class="table-wrap" id="ranking"><div class="notice">Klassement laden…</div></div>
 </main><div class="toast" id="toast"></div><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>
 const SUPABASE_URL="https://lgwlvtsvsmxkyenesepj.supabase.co";
