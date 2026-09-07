@@ -104,3 +104,10 @@ Wanneer je bij een bestaande les een criterium uitschakelt, controleert Admin of
 - Geen sticky kolommen of verticale scheidingslijn meer.
 - Tabelranden zijn verwijderd voor een rustiger, minimalistischer beeld.
 - De horizontale scrollzone gebruikt de volledige schermbreedte.
+
+## V14
+- Scorepagina heeft nu tabs voor Scores invoeren en Leaderboard.
+- Na selectie van een docent worden onderaan diens 10 laatst ingevoerde scores getoond.
+- Die recente scores kunnen rechtstreeks vanaf de scorepagina verwijderd worden.
+- Leaderboard op de docentenpagina gebruikt dezelfde minimalistische weergave als het publieke leaderboard.
+- Bij opnieuw opslaan wordt `created_at` bijgewerkt zodat de recente lijst de laatste invoer weerspiegelt.
