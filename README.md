@@ -106,6 +106,12 @@ Wanneer je bij een bestaande les een criterium uitschakelt, controleert Admin of
 - De horizontale scrollzone gebruikt de volledige schermbreedte.
 
 ## V14
-- Nieuwe pagina `reglement.html` in dezelfde stijl als Season 26-27.
-- Link naar het wedstrijdreglement toegevoegd op het leaderboard.
-- Link naar het wedstrijdreglement én terug naar het leaderboard toegevoegd op de docentenscorepagina.
+- Scorepagina heeft nu tabs voor Scores invoeren en Leaderboard.
+- Na selectie van een docent worden onderaan diens 10 laatst ingevoerde scores getoond.
+- Die recente scores kunnen rechtstreeks vanaf de scorepagina verwijderd worden.
+- Leaderboard op de docentenpagina gebruikt dezelfde minimalistische weergave als het publieke leaderboard.
+- Bij opnieuw opslaan wordt `created_at` bijgewerkt zodat de recente lijst de laatste invoer weerspiegelt.
+
+## V15
+- Docentenpagina heeft drie aparte tabbladen: Scores invoeren, Scores verwijderen en Leaderboard.
+- De laatste 10 scores staan niet langer onder het invoerformulier, maar in het aparte tabblad Scores verwijderen.
