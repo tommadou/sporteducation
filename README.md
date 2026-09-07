@@ -79,3 +79,22 @@ Wanneer je bij een bestaande les een criterium uitschakelt, controleert Admin of
 ## V8
 - Zichtbare titel overal gewijzigd naar `SEASON 26-27`.
 - Hoofdtitel blijft op smartphone op één regel en schaalt mee met de schermbreedte.
+
+## V10
+- Op smartphone toont het leaderboard alleen positie, team en totaalpunten; geen horizontaal scrollen meer nodig.
+- Deelscores blijven zichtbaar op grotere schermen.
+- De nummer 1 staat subtiel vet.
+- Klastabs worden alfabetisch weergegeven.
+
+## V11
+- Mobiel leaderboard: positie, team en totaalpunten blijven links zichtbaar; deelscores staan rechts en zijn bereikbaar door horizontaal te scrollen.
+- In landscape is automatisch meer van het klassement zichtbaar.
+- Admin > Scores toont per score wie ze gaf.
+- Filters toegevoegd op beoordelaar, klas, les, team en criterium.
+- De scorelijst laadt maximaal 2000 recente scores in plaats van 250.
+
+## V12
+- Admin > Lessen heeft filters voor beoordelaar, klas en lesgevend team.
+- Sorteren kan op datum oplopend/aflopend, klas + datum, beoordelaar of lesnaam.
+- Het aantal gevonden lessen wordt getoond.
+- Bij wisselen van klas wordt een eventueel teamfilter automatisch gewist.

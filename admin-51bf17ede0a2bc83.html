@@ -11,7 +11,7 @@ h1{margin:0;font-size:clamp(30px,9.2vw,68px);font-weight:400;line-height:.95;let
 .criterion{margin:17px 0}.criterion-label{font-size:10px;letter-spacing:.18em;text-transform:uppercase;margin-bottom:9px}.score-buttons{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.score-btn{min-height:52px;border:1px solid #bbb;background:#fff;font-size:19px}.score-btn.selected{background:#111;color:#fff;border-color:#111}
 .primary,.secondary{width:100%;min-height:50px;border:1px solid #111;padding:13px;text-transform:uppercase;letter-spacing:.15em;font-size:9px;margin-top:9px}.primary{background:#111;color:#fff}.secondary{background:#fff;color:#111}.primary:disabled{opacity:.35}
 .notice{font-size:11px;line-height:1.55;background:var(--soft);padding:14px;margin:12px 0}.admin-row{border-top:1px solid #e4e4e4;padding:14px 0;display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center}.admin-row strong{font-weight:400;letter-spacing:.04em}.admin-row small{display:block;color:#999;margin-top:4px}.actions{display:flex;gap:6px}.tiny{border:1px solid #bbb;background:#fff;padding:8px;font-size:8px;letter-spacing:.1em;text-transform:uppercase}
-.editor{border-top:1px solid #111;padding:18px 0;margin-top:10px}.editor-title{font-size:11px;letter-spacing:.16em;text-transform:uppercase;margin-bottom:16px}.hidden{display:none!important}
+.score-filters{border-top:1px solid #111;border-bottom:1px solid #ddd;padding:16px 0;margin:10px 0 8px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.score-filters .field{margin:0}.score-filter-actions{grid-column:1/-1}.score-count{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#999;margin:12px 0}.editor{border-top:1px solid #111;padding:18px 0;margin-top:10px}.editor-title{font-size:11px;letter-spacing:.16em;text-transform:uppercase;margin-bottom:16px}.hidden{display:none!important}
 .toast{position:fixed;left:16px;right:16px;bottom:18px;background:#111;color:#fff;padding:13px;z-index:50;font-size:11px;opacity:0;pointer-events:none;transition:.2s}.toast.show{opacity:1}
 @media(max-width:560px){.app{padding-top:24px}.standings{min-width:500px}.table-wrap{margin-right:-16px;padding-right:16px}.score-buttons{gap:6px}.score-btn{min-height:50px}}
 @media(min-width:650px){.app{padding-left:22px;padding-right:22px}.score-buttons{max-width:420px}.toast{left:50%;right:auto;width:520px;transform:translateX(-50%)}}
@@ -28,21 +28,93 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function toast(m){const t=$("toast");if(!t)return;t.textContent=m;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2200)}
 </script><script>
-let S={teams:[],lessons:[],teachers:[],criteria:[],scores:[],lessonEvaluators:[],lessonCriteria:[],panel:"teams",edit:null};
+let S={teams:[],lessons:[],teachers:[],criteria:[],scores:[],lessonEvaluators:[],lessonCriteria:[],panel:"teams",edit:null,scoreFilters:{teacher:"",class_name:"",lesson:"",team:"",criterion:""},lessonFilters:{teacher:"",class_name:"",team:"",sort:"date_asc"}};
 async function load(){
  if(!configured)return toast("Koppel eerst Supabase");
- const [a,b,c,d,e,f,g]=await Promise.all([db.from("teams").select("*").order("class_name,sort_order"),db.from("lessons").select("*").order("lesson_date"),db.from("teachers").select("*").order("name"),db.from("criteria").select("*").order("sort_order"),db.from("scores").select("*,teams(name,class_name),criteria(name),lessons(lesson_date,title),teachers(name)").order("created_at",{ascending:false}).limit(250),db.from("lesson_evaluators").select("*"),db.from("lesson_criteria").select("*")]);
+ const [a,b,c,d,e,f,g]=await Promise.all([db.from("teams").select("*").order("class_name,sort_order"),db.from("lessons").select("*").order("lesson_date"),db.from("teachers").select("*").order("name"),db.from("criteria").select("*").order("sort_order"),db.from("scores").select("*,teams(name,class_name),criteria(name),lessons(lesson_date,title),teachers(name)").order("created_at",{ascending:false}).limit(2000),db.from("lesson_evaluators").select("*"),db.from("lesson_criteria").select("*")]);
  Object.assign(S,{teams:a.data||[],lessons:b.data||[],teachers:c.data||[],criteria:d.data||[],scores:e.data||[],lessonEvaluators:f.data||[],lessonCriteria:g.data||[]});render();
 }
 $("tabs").querySelectorAll(".tab").forEach(b=>b.onclick=()=>{S.panel=b.dataset.p;S.edit=null;$("tabs").querySelectorAll(".tab").forEach(x=>x.classList.toggle("active",x===b));render()});
 const row=(title,sub,table,id)=>`<div class="admin-row"><div><strong>${esc(title)}</strong><small>${esc(sub)}</small></div><div class="actions"><button class="tiny edit" data-table="${table}" data-id="${id}">Bewerk</button><button class="tiny del" data-table="${table}" data-id="${id}">Verwijder</button></div></div>`;
+function fmtDate(d){if(!d)return "";const x=new Date(d+"T12:00:00");return isNaN(x)?d:x.toLocaleDateString("nl-BE")}
+function scoreFilterPanel(){
+ const f=S.scoreFilters;
+ const teacherOpts=S.teachers.map(t=>`<option value="${t.id}" ${String(f.teacher)===String(t.id)?"selected":""}>${esc(t.name)}</option>`).join("");
+ const classes=[...new Set(S.teams.map(t=>t.class_name))].sort();
+ const classOpts=classes.map(x=>`<option value="${esc(x)}" ${f.class_name===x?"selected":""}>${esc(x)}</option>`).join("");
+ const lessonSource=S.lessons.filter(l=>!f.class_name||l.class_name===f.class_name);
+ const lessonOpts=lessonSource.map(l=>`<option value="${l.id}" ${String(f.lesson)===String(l.id)?"selected":""}>${esc(l.class_name)} · ${fmtDate(l.lesson_date)} · ${esc(l.title||"Les")}</option>`).join("");
+ const teamSource=S.teams.filter(t=>!f.class_name||t.class_name===f.class_name);
+ const teamOpts=teamSource.map(t=>`<option value="${t.id}" ${String(f.team)===String(t.id)?"selected":""}>${esc(t.class_name)} · ${esc(t.name)}</option>`).join("");
+ const critOpts=S.criteria.map(c=>`<option value="${c.id}" ${String(f.criterion)===String(c.id)?"selected":""}>${esc(c.name)}</option>`).join("");
+ return `<div class="score-filters">
+ <div class="field"><label>Beoordelaar</label><select class="score-filter" data-key="teacher"><option value="">Alle beoordelaars</option>${teacherOpts}</select></div>
+ <div class="field"><label>Klas</label><select class="score-filter" data-key="class_name"><option value="">Alle klassen</option>${classOpts}</select></div>
+ <div class="field"><label>Les</label><select class="score-filter" data-key="lesson"><option value="">Alle lessen</option>${lessonOpts}</select></div>
+ <div class="field"><label>Team</label><select class="score-filter" data-key="team"><option value="">Alle teams</option>${teamOpts}</select></div>
+ <div class="field"><label>Criterium</label><select class="score-filter" data-key="criterion"><option value="">Alle criteria</option>${critOpts}</select></div>
+ <div class="score-filter-actions"><button type="button" class="secondary" id="clearScoreFilters">Filters wissen</button></div>
+ </div>`;
+}
+function filteredScores(){
+ const f=S.scoreFilters;
+ return S.scores.filter(x=>
+  (!f.teacher||String(x.teacher_id)===String(f.teacher)) &&
+  (!f.class_name||x.teams?.class_name===f.class_name) &&
+  (!f.lesson||String(x.lesson_id)===String(f.lesson)) &&
+  (!f.team||String(x.team_id)===String(f.team)) &&
+  (!f.criterion||String(x.criterion_id)===String(f.criterion))
+ );
+}
+
+function lessonFilterPanel(){
+ const f=S.lessonFilters;
+ const teacherOpts=S.teachers.map(t=>`<option value="${t.id}" ${String(f.teacher)===String(t.id)?"selected":""}>${esc(t.name)}</option>`).join("");
+ const classes=[...new Set(S.lessons.map(l=>l.class_name).filter(Boolean))].sort();
+ const classOpts=classes.map(x=>`<option value="${esc(x)}" ${f.class_name===x?"selected":""}>${esc(x)}</option>`).join("");
+ const teamSource=S.teams.filter(t=>!f.class_name||t.class_name===f.class_name);
+ const teamOpts=teamSource.map(t=>`<option value="${t.id}" ${String(f.team)===String(t.id)?"selected":""}>${esc(t.class_name)} · ${esc(t.name)}</option>`).join("");
+ return `<div class="score-filters">
+   <div class="field"><label>Beoordelaar</label><select class="lesson-filter" data-key="teacher"><option value="">Alle beoordelaars</option>${teacherOpts}</select></div>
+   <div class="field"><label>Klas</label><select class="lesson-filter" data-key="class_name"><option value="">Alle klassen</option>${classOpts}</select></div>
+   <div class="field"><label>Lesgevend team</label><select class="lesson-filter" data-key="team"><option value="">Alle teams</option>${teamOpts}</select></div>
+   <div class="field"><label>Sorteren</label><select class="lesson-filter" data-key="sort">
+     <option value="date_asc" ${f.sort==="date_asc"?"selected":""}>Datum: oud → nieuw</option>
+     <option value="date_desc" ${f.sort==="date_desc"?"selected":""}>Datum: nieuw → oud</option>
+     <option value="class_date" ${f.sort==="class_date"?"selected":""}>Klas + datum</option>
+     <option value="teacher" ${f.sort==="teacher"?"selected":""}>Beoordelaar</option>
+     <option value="title" ${f.sort==="title"?"selected":""}>Lesnaam</option>
+   </select></div>
+   <div class="score-filter-actions"><button type="button" class="secondary" id="clearLessonFilters">Filters wissen</button></div>
+ </div>`;
+}
+function lessonTeacherNames(lessonId){
+ return S.teachers
+   .filter(t=>lessonEvaluatorIds(lessonId).includes(String(t.id)))
+   .map(t=>t.name);
+}
+function filteredLessons(){
+ const f=S.lessonFilters;
+ let arr=S.lessons.filter(l=>
+   (!f.teacher||lessonEvaluatorIds(l.id).includes(String(f.teacher))) &&
+   (!f.class_name||l.class_name===f.class_name) &&
+   (!f.team||String(l.teaching_team_id)===String(f.team))
+ );
+ arr=[...arr];
+ if(f.sort==="date_desc") arr.sort((a,b)=>(b.lesson_date||"").localeCompare(a.lesson_date||"")||(a.title||"").localeCompare(b.title||""));
+ else if(f.sort==="class_date") arr.sort((a,b)=>(a.class_name||"").localeCompare(b.class_name||"")||(a.lesson_date||"").localeCompare(b.lesson_date||"")||(a.title||"").localeCompare(b.title||""));
+ else if(f.sort==="teacher") arr.sort((a,b)=>(lessonTeacherNames(a.id)[0]||"zzz").localeCompare(lessonTeacherNames(b.id)[0]||"zzz")||(a.lesson_date||"").localeCompare(b.lesson_date||""));
+ else if(f.sort==="title") arr.sort((a,b)=>(a.title||"").localeCompare(b.title||"")||(a.lesson_date||"").localeCompare(b.lesson_date||""));
+ else arr.sort((a,b)=>(a.lesson_date||"").localeCompare(b.lesson_date||"")||(a.title||"").localeCompare(b.title||""));
+ return arr;
+}
 function render(){
  const c=$("content"),p=S.panel;
  if(p==="teams") c.innerHTML=formTeam()+S.teams.map(x=>row(x.name,x.class_name,"teams",x.id)).join("");
  if(p==="teachers") c.innerHTML=formTeacher()+S.teachers.map(x=>row(x.name,x.active?"actief":"inactief","teachers",x.id)).join("");
  if(p==="criteria") c.innerHTML=formCriterion()+S.criteria.map(x=>row(x.name,`${x.min_points}–${x.max_points} · ${x.applies_to==="all"?"alle teams":"lesgevend team"}`,"criteria",x.id)).join("");
- if(p==="lessons") c.innerHTML=formLesson()+S.lessons.map(x=>{const t=S.teams.find(t=>String(t.id)===String(x.teaching_team_id));const ev=S.teachers.filter(tt=>lessonEvaluatorIds(x.id).includes(String(tt.id))).map(tt=>tt.name).join(", ");const cr=S.criteria.filter(cc=>lessonCriterionIds(x.id).includes(String(cc.id))).map(cc=>cc.short_name||cc.name).join(", ");return row(x.title||"Les",`${x.class_name} · ${x.lesson_date} · ${t?.name||"geen lesgevend team"} · beoordelaars: ${ev||"geen"} · criteria: ${cr||"geen"}`,"lessons",x.id)}).join("");
- if(p==="scores") c.innerHTML=formScore()+S.scores.map(x=>row(`${x.teams?.name||"Team"} · ${x.criteria?.name||""} · ${x.points} pt`,`${x.teams?.class_name||""} · ${x.lessons?.lesson_date||""}`,"scores",x.id)).join("");
+ if(p==="lessons"){const shown=filteredLessons();c.innerHTML=formLesson()+lessonFilterPanel()+`<div class="score-count">${shown.length} les${shown.length===1?"":"sen"} gevonden</div>`+shown.map(x=>{const t=S.teams.find(t=>String(t.id)===String(x.teaching_team_id));const ev=lessonTeacherNames(x.id).join(", ");const cr=S.criteria.filter(cc=>lessonCriterionIds(x.id).includes(String(cc.id))).map(cc=>cc.short_name||cc.name).join(", ");return row(x.title||"Les",`${x.class_name} · ${fmtDate(x.lesson_date)} · ${t?.name||"geen lesgevend team"} · beoordelaars: ${ev||"geen"} · criteria: ${cr||"geen"}`,"lessons",x.id)}).join("");}
+ if(p==="scores"){const shown=filteredScores();c.innerHTML=formScore()+scoreFilterPanel()+`<div class="score-count">${shown.length} score${shown.length===1?"":"s"} gevonden</div>`+shown.map(x=>row(`${x.teams?.name||"Team"} · ${x.criteria?.name||""} · ${x.points} pt`,`${x.teams?.class_name||""} · ${fmtDate(x.lessons?.lesson_date||"")} · ${x.lessons?.title||"Les"} · door ${x.teachers?.name||"onbekend"}`,"scores",x.id)).join("");}
  bind();
 }
 function editing(table){return S.edit?.table===table?S.edit.obj:null}
@@ -55,11 +127,19 @@ function lessonEvaluatorIds(lessonId){return S.lessonEvaluators.filter(x=>String
 function lessonCriterionIds(lessonId){return S.lessonCriteria.filter(x=>String(x.lesson_id)===String(lessonId)).map(x=>String(x.criterion_id))}
 function multiChecks(kind,items,selected){return `<div class="multi-checks">${items.map(x=>`<label style="display:flex;gap:9px;align-items:center;padding:8px 0;font-size:12px"><input style="width:auto;min-height:auto" type="checkbox" name="${kind}" value="${x.id}" ${selected.includes(String(x.id))?"checked":""}>${esc(x.name)}</label>`).join("")}</div>`}
 function formLesson(){const x=editing("lessons"),evIds=x?lessonEvaluatorIds(x.id):[],crIds=x?lessonCriterionIds(x.id):S.criteria.filter(c=>c.active!==false).map(c=>String(c.id));return `<div class="editor"><div class="editor-title">Lessen importeren uit Excel</div><div class="notice">Kolommen: Datum, Klas, Lesnaam, Lesgevend team, Beoordelaars, Criteria. Meerdere namen/criteria scheid je met een puntkomma.</div><input id="lessonImport" type="file" accept=".xlsx,.xls"><button type="button" id="importHelp" class="secondary">Excelbestand kiezen en importeren</button></div><form id="form" class="editor"><div class="editor-title">${x?"Les bewerken":"Les toevoegen"}</div><div class="field"><label>Datum</label><input type="date" name="lesson_date" value="${esc(x?.lesson_date||"")}" required></div><div class="field"><label>Klas</label><input name="class_name" value="${esc(x?.class_name||"")}" placeholder="3LOA" required></div><div class="field"><label>Lesnaam</label><input name="title" value="${esc(x?.title||"")}" required></div><div class="field"><label>Lesgevend team</label><select name="teaching_team_id">${teamOptions(x?.teaching_team_id)}</select></div><div class="field"><label>Beoordelaars</label>${multiChecks("evaluator_ids",S.teachers.filter(t=>t.active!==false),evIds)}</div><div class="field"><label>Criteria die deze les beoordeeld worden</label>${multiChecks("criterion_ids",S.criteria.filter(c=>c.active!==false),crIds)}</div><button class="primary">${x?"Wijzigingen opslaan":"Les toevoegen"}</button>${x?'<button type="button" class="secondary cancel">Annuleren</button>':""}</form>`}
-function formScore(){const x=editing("scores");if(!x)return '<div class="notice">Klik op <b>Bewerk</b> bij een score om een fout rechtstreeks te corrigeren. De docent wordt niet getoond op het publieke klassement.</div>';return `<form id="form" class="editor"><div class="editor-title">Score bewerken</div><div class="notice">${esc(x.teams?.class_name||"")} · ${esc(x.teams?.name||"")} · ${esc(x.criteria?.name||"")} · ${esc(x.lessons?.lesson_date||"")}</div><div class="field"><label>Punten</label><input type="number" name="points" value="${x.points}" required></div><button class="primary">Wijzigingen opslaan</button><button type="button" class="secondary cancel">Annuleren</button></form>`}
+function formScore(){const x=editing("scores");if(!x)return '<div class="notice">Klik op <b>Bewerk</b> bij een score om een fout rechtstreeks te corrigeren. De docent wordt niet getoond op het publieke klassement.</div>';return `<form id="form" class="editor"><div class="editor-title">Score bewerken</div><div class="notice">${esc(x.teams?.class_name||"")} · ${esc(x.teams?.name||"")} · ${esc(x.criteria?.name||"")} · ${fmtDate(x.lessons?.lesson_date||"")} · door ${esc(x.teachers?.name||"onbekend")}</div><div class="field"><label>Punten</label><input type="number" name="points" value="${x.points}" required></div><button class="primary">Wijzigingen opslaan</button><button type="button" class="secondary cancel">Annuleren</button></form>`}
 function bind(){
  document.querySelectorAll(".edit").forEach(b=>b.onclick=()=>{const arr=S[b.dataset.table];const obj=arr.find(x=>String(x.id)===b.dataset.id);S.edit={table:b.dataset.table,obj};render();window.scrollTo({top:250,behavior:"smooth"})});
  document.querySelectorAll(".cancel").forEach(b=>b.onclick=()=>{S.edit=null;render()});
  document.querySelectorAll(".del").forEach(b=>b.onclick=async()=>{if(!confirm("Zeker verwijderen?"))return;const {error}=await db.from(b.dataset.table).delete().eq("id",b.dataset.id);if(error)toast(error.message);else{toast("Verwijderd");S.edit=null;await load()}});
+ document.querySelectorAll(".lesson-filter").forEach(el=>el.onchange=()=>{
+   S.lessonFilters[el.dataset.key]=el.value;
+   if(el.dataset.key==="class_name")S.lessonFilters.team="";
+   render();
+ });
+ const clearLessonFilters=$("clearLessonFilters");if(clearLessonFilters)clearLessonFilters.onclick=()=>{S.lessonFilters={teacher:"",class_name:"",team:"",sort:"date_asc"};render()};
+ document.querySelectorAll(".score-filter").forEach(el=>el.onchange=()=>{S.scoreFilters[el.dataset.key]=el.value;if(el.dataset.key==="class_name"){S.scoreFilters.lesson="";S.scoreFilters.team=""}render()});
+ const clearFilters=$("clearScoreFilters");if(clearFilters)clearFilters.onclick=()=>{S.scoreFilters={teacher:"",class_name:"",lesson:"",team:"",criterion:""};render()};
  const imp=$("lessonImport");if(imp)imp.onchange=()=>importLessons(imp.files?.[0]);
  const ih=$("importHelp");if(ih)ih.onclick=()=>{if(!imp?.files?.[0])return toast("Kies eerst een Excelbestand");importLessons(imp.files[0])};
  const f=$("form");if(!f)return;f.onsubmit=submit;
