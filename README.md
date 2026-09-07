@@ -98,3 +98,9 @@ Wanneer je bij een bestaande les een criterium uitschakelt, controleert Admin of
 - Sorteren kan op datum oplopend/aflopend, klas + datum, beoordelaar of lesnaam.
 - Het aantal gevonden lessen wordt getoond.
 - Bij wisselen van klas wordt een eventueel teamfilter automatisch gewist.
+
+## V13
+- Mobiel leaderboard: de volledige tabel scrollt nu als één geheel.
+- Geen sticky kolommen of verticale scheidingslijn meer.
+- Tabelranden zijn verwijderd voor een rustiger, minimalistischer beeld.
+- De horizontale scrollzone gebruikt de volledige schermbreedte.
