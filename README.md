@@ -111,3 +111,7 @@ Wanneer je bij een bestaande les een criterium uitschakelt, controleert Admin of
 - Die recente scores kunnen rechtstreeks vanaf de scorepagina verwijderd worden.
 - Leaderboard op de docentenpagina gebruikt dezelfde minimalistische weergave als het publieke leaderboard.
 - Bij opnieuw opslaan wordt `created_at` bijgewerkt zodat de recente lijst de laatste invoer weerspiegelt.
+
+## V15
+- Docentenpagina heeft drie aparte tabbladen: Scores invoeren, Scores verwijderen en Leaderboard.
+- De laatste 10 scores staan niet langer onder het invoerformulier, maar in het aparte tabblad Scores verwijderen.

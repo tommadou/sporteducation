@@ -28,12 +28,16 @@ h1{margin:0;font-size:clamp(30px,9.2vw,68px);font-weight:400;line-height:.95;let
 @media(min-width:650px){.app{padding-left:22px;padding-right:22px}.score-buttons{max-width:420px}.toast{left:50%;right:auto;width:520px;transform:translateX(-50%)}}
 </style></head><body><main class="app">
 <header class="hero"><div class="eyebrow">VIVES · SPORT EDUCATION</div><h1>SEASON 26-27</h1><div class="rule"></div></header>
-<div class="tabs" id="pageTabs"><button class="tab active" data-page="scorePanel">Scores invoeren</button><button class="tab" data-page="leaderboardPanel">Leaderboard</button></div>
+<div class="tabs" id="pageTabs"><button class="tab active" data-page="scorePanel">Scores invoeren</button><button class="tab" data-page="deletePanel">Scores verwijderen</button><button class="tab" data-page="leaderboardPanel">Leaderboard</button></div>
 <section id="scorePanel" class="page-panel active">
 <div class="section-head"><h2>Score invoeren</h2><span class="meta">Docenten</span></div>
 <div class="field"><label>Docent</label><select id="teacher"></select></div><div class="field"><label>Klas</label><select id="class"></select></div><div class="field"><label>Les</label><select id="lesson"></select></div>
 <div id="teams"></div><button id="save" class="primary" disabled>Alle scores opslaan</button>
-<div class="recent"><div class="recent-head"><h2>Laatste 10 scores</h2><span class="meta" id="recentTeacher">Kies docent</span></div><div id="recentScores"><div class="notice">Kies eerst een docent.</div></div></div>
+</section>
+<section id="deletePanel" class="page-panel">
+<div class="section-head"><h2>Scores verwijderen</h2><span class="meta" id="recentTeacher">Kies docent</span></div>
+<div class="notice" style="margin-bottom:16px">Toont de 10 laatst ingevoerde scores van de docent die je bij ‘Scores invoeren’ selecteert.</div>
+<div id="recentScores"><div class="notice">Kies eerst een docent bij ‘Scores invoeren’.</div></div>
 </section>
 <section id="leaderboardPanel" class="page-panel">
 <div class="section-head"><h2>Klassement</h2><span class="meta" id="updated">Live</span></div>
@@ -111,7 +115,7 @@ async function loadRecentScores(){
  const tid=$("teacher")?.value;
  const box=$("recentScores"),meta=$("recentTeacher");
  if(!box)return;
- if(!tid){box.innerHTML='<div class="notice">Kies eerst een docent.</div>';if(meta)meta.textContent="Kies docent";return}
+ if(!tid){box.innerHTML='<div class="notice">Kies eerst een docent bij ‘Scores invoeren’.</div>';if(meta)meta.textContent="Kies docent";return}
  const teacher=teachers.find(t=>String(t.id)===String(tid));if(meta)meta.textContent=teacher?.name||"Docent";
  const {data,error}=await db.from("scores").select("id,lesson_id,team_id,criterion_id,teacher_id,points,created_at").eq("teacher_id",tid).order("created_at",{ascending:false}).limit(10);
  if(error){box.innerHTML=`<div class="notice">${esc(error.message)}</div>`;return}
@@ -126,7 +130,7 @@ async function deleteRecentScore(id){
  if(error)return toast(error.message);
  toast("Score verwijderd");await refreshScores();
 }
-$("pageTabs").querySelectorAll(".tab").forEach(b=>b.onclick=()=>{$("pageTabs").querySelectorAll(".tab").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll(".page-panel").forEach(p=>p.classList.toggle("active",p.id===b.dataset.page));if(b.dataset.page==="leaderboardPanel")renderLeaderboard()});
+$("pageTabs").querySelectorAll(".tab").forEach(b=>b.onclick=()=>{$("pageTabs").querySelectorAll(".tab").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll(".page-panel").forEach(p=>p.classList.toggle("active",p.id===b.dataset.page));if(b.dataset.page==="leaderboardPanel")renderLeaderboard();if(b.dataset.page==="deletePanel")loadRecentScores()});
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)refreshScores()});
 if("serviceWorker"in navigator)navigator.serviceWorker.register("./sw.js").catch(()=>{});
 load();
